@@ -4,20 +4,20 @@ import random
 import numpy as np
 from tqdm import tqdm 
 
-f = open('file-tsp.txt', 'r')
+f = open('u-tsp.txt', 'r')
 tsp = f.read()
 
 # Number of cities
-n = 50
+n = 22
 
-generations = 1500
+generations = 15
 
 mutation_rate = 0.05
-crossover_rate = 0.1
+crossover_rate = 0.8
 
 candidate_n = 500
 
-opt_search = False # ~30*time
+opt_search = True # ~30*time
 multi_pass = False # ~5*time
 
 
@@ -77,82 +77,88 @@ def local_search(tour,cities):
                     changed=multi_pass 
 
 
-candidates = []
-fitness = []
-best_gen_fitness = []
+
 
 # Coordinates parsed from the txt file
 c = np.array([[float(y) for y in x.split(' ') if y] for x in tsp.split('\n')])
 
-# Tour ordering (random initialization)
-t = [x for x in range(n)]
+for ite in range(10):
 
-for i in range(candidate_n):
-    candidates.append(t.copy())
-    random.shuffle(candidates[i])
-    fitness.append(calculate_fitness(c, candidates[i]))
+    candidates = []
+    fitness = []
+    best_gen_fitness = []
 
-# Repeat until stop condition satisfied:
-for _ in tqdm(range(generations)):
-    fitness = np.array(fitness)
-    new_candidates = []
+    # Tour ordering (random initialization)
+    t = [x for x in range(n)]
 
-    for _ in range(candidate_n):
+    for i in range(candidate_n):
+        candidates.append(t.copy())
+        random.shuffle(candidates[i])
+        fitness.append(calculate_fitness(c, candidates[i]))
 
-        # 1. Select parents for reproduction
-        first_p = candidates[np.random.choice(
-            len(fitness), p=fitness/sum(fitness))]
-        second_p = candidates[np.random.choice(
-            len(fitness), p=fitness/sum(fitness))]
+    # Repeat until stop condition satisfied:
+    for _ in tqdm(range(generations)):
+        fitness = np.array(fitness)
+        new_candidates = []
 
-        # 2. Recombine and mutate (crossover)
-        if random.random() < crossover_rate:
-            first_child, second_child = crossover(first_p, second_p)
-        else:
-            continue    
+        for _ in range(candidate_n//2):
 
-        # Random mutation
-        if random.random() < mutation_rate:
-            mutate(first_child)
+            # 1. Select parents for reproduction
+            first_p = candidates[np.random.choice(
+                len(fitness), p=fitness/sum(fitness))]
+            second_p = candidates[np.random.choice(
+                len(fitness), p=fitness/sum(fitness))]
 
-        if random.random() < mutation_rate:
-            mutate(second_child)
+            # 2. Recombine and mutate (crossover)
+            if random.random() < crossover_rate:
+                first_child, second_child = crossover(first_p, second_p)
+            else:
+                first_child, second_child = first_p,second_p
 
-        # (3. Apply local search to each individual)
-        if opt_search:
-            local_search(first_child,c)
-            local_search(second_child,c)
+            # Random mutation
+            if random.random() < mutation_rate:
+                mutate(first_child)
 
-        new_candidates.append(first_child)
-        new_candidates.append(second_child)
-        
+            if random.random() < mutation_rate:
+                mutate(second_child)
 
-    # 4. Evaluate fitness of each candidate
-    new_fitness = [calculate_fitness(c, candidate) for candidate in new_candidates]
+            # (3. Apply local search to each individual)
+            if opt_search:
+                local_search(first_child,c)
+                local_search(second_child,c)
 
-    # 5. Select next generation
-    # candidates = new_candidates # Kill parents
-    # fitness = new_fitness
+            new_candidates.append(first_child)
+            new_candidates.append(second_child)
+            
 
-    # Elitism
-    total_c = candidates + new_candidates
-    total_f = np.concatenate((fitness, np.array(new_fitness)))
-    candidates = [x for _, x in sorted(zip(total_f, total_c))]
-    candidates = candidates[-candidate_n:]
-    fitness = sorted(total_f)[-candidate_n:]
-    best_gen_fitness.append(max(fitness))
+        # 4. Evaluate fitness of each candidate
+        new_fitness = [calculate_fitness(c, candidate) for candidate in new_candidates]
 
-# Select Best Child (Chiara)
-best_child = candidates[np.argmax(fitness)]
+        # 5. Select next generation
+        # candidates = new_candidates # Kill parents
+        # fitness = new_fitness
 
-plt.plot([x[0] for x in [c[i] for i in best_child]],
-         [x[1] for x in [c[i] for i in best_child]],
-         color='black',
-         linewidth=1,
-         alpha=0.75)
-plt.scatter([x[0] for x in c], [x[1] for x in c], color='firebrick', s=100)
-plt.show()
+        # Elitism
+        total_c = candidates + new_candidates
+        total_f = np.concatenate((fitness, np.array(new_fitness)))
+        candidates = [x for _, x in sorted(zip(total_f, total_c))]
+        candidates = candidates[-candidate_n:]
+        fitness = sorted(total_f)[-candidate_n:]
+        best_gen_fitness.append(max(fitness))
 
-plt.plot(range(generations), best_gen_fitness)
-plt.title("Fitness over time")
+    # Select Best Child (Chiara)
+    best_child = candidates[np.argmax(fitness)]
+
+    # plt.plot([x[0] for x in [c[i] for i in best_child]],
+    #         [x[1] for x in [c[i] for i in best_child]],
+    #         color='black',
+    #         linewidth=1,
+    #         alpha=0.75)
+    # plt.scatter([x[0] for x in c], [x[1] for x in c], color='firebrick', s=100)
+    # plt.show()
+
+    plt.plot(range(generations), best_gen_fitness)
+plt.xlabel("generation")
+plt.ylabel("fitness")    
+plt.title(f"Fitness over {n} generations")
 plt.show()
